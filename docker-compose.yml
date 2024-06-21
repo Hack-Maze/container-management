@@ -1,6 +1,7 @@
 services:
   container-management:
     image: mostafaewida/hackmaze_container_management
+    pull_policy: always
     ports:
       - "80:80"
     env_file:

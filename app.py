@@ -52,6 +52,10 @@ def start_container():
     resource_group_name   = f"{maze_title.lower()}-{user_name}-rg"
     container_name        = f"{maze_title.lower()}-{user_name}-container"
 
+    # Check if all required data is provided
+    if not maze_title or not user_name or not container_image:
+        return jsonify({'message': 'Bad Request: Missing required data'}), 400
+
     region                =  "northeurope"
     DNS_name              = f"{maze_title.lower()}-{user_name}"
 
@@ -139,11 +143,14 @@ def get_status():
             'status': 'UP'
         }), 200
 
-
 @app.route('/stop-container', methods=['POST'])
 def stop_container():
     data                  = request.get_json()
     resource_group_name   = data.get('resource_group_name')
+
+    # Check if resource group name is provided
+    if not resource_group_name:
+        return jsonify({'message': 'Bad Request: Missing resource group name'}), 400
 
     resource_client = ResourceManagementClient(credential, SUBSCRIPTION_ID)
     # Delete resource group
@@ -151,11 +158,10 @@ def stop_container():
         resource_client.resource_groups.begin_delete(resource_group_name)
         return jsonify(
         {
-            'message': 'resource_group  has been deleted successfully',
-
+            'message': 'Resource group has been deleted successfully',
         }), 200
     except Exception as e:
-        return jsonify({'message': 'resource group could not be found'}), 404
+        return jsonify({'message': 'Resource group could not be found'}), 400
 
 
 
