@@ -1,0 +1,8 @@
+services:
+  container-management:
+    image: mostafaewida/hackmaze_container_management
+    ports:
+      - "80:80"
+    env_file:
+      - .env
+
