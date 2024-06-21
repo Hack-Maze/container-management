@@ -1,43 +1,82 @@
 from flask import Flask, request, jsonify
-from azure.identity import DefaultAzureCredential
+import os
+from azure.mgmt.resource import  ResourceManagementClient
+from azure.identity import ClientSecretCredential
+from dotenv import load_dotenv
 from azure.mgmt.containerinstance import ContainerInstanceManagementClient
+from azure.mgmt.resource.resources.models import ResourceGroup
+
 from azure.mgmt.containerinstance.models import (
     ContainerGroup,
     Container,
-    ContainerGroupNetworkProtocol,
     ContainerPort,
     EnvironmentVariable,
     IpAddress,
     OperatingSystemTypes,
-    Port,
     ResourceRequests,
     ResourceRequirements
 )
-import os
 
 app = Flask(__name__)
 
 # Azure configuration
-SUBSCRIPTION_ID = 'your_subscription_id'
-RESOURCE_GROUP = 'your_resource_group'
-CONTAINER_GROUP_NAME = 'your_container_group_name'
-CONTAINER_NAME = 'your_container_name'
-IMAGE = 'your_docker_image'
+# Azure CREDS
+load_dotenv()
 
-# Azure credentials
-credential = DefaultAzureCredential()
+SUBSCRIPTION_ID = os.getenv('AZURE_SUBSCRIPTION_ID')
+TENANT_ID       = os.getenv('AZURE_TENANT_ID')
+CLIENT_ID       = os.getenv('AZURE_CLIENT_ID')
+CLIENT_SECRET   = os.getenv('AZURE_CLIENT_SECRET')
+
+# Manually create the credential object using the environment variables
+
+credential = ClientSecretCredential(tenant_id=TENANT_ID,client_id=CLIENT_ID,client_secret=CLIENT_SECRET)
+
+
+
+
+
+# Initialize the client
 client = ContainerInstanceManagementClient(credential, SUBSCRIPTION_ID)
 
 @app.route('/start-container', methods=['POST'])
 def start_container():
     # Get input data from the request
-    data = request.get_json()
-    cpu_cores = data.get('cpu_cores', 1)
-    memory_gb = data.get('memory_gb', 1.5)
+    data                  = request.get_json()
+    maze_title            = data.get('maze_title')
+    user_name             = data.get('user_name')
+    container_image       = data.get('container_image')
     environment_variables = data.get('environment_variables', {})
+    open_ports            = data.get('open_ports', [])
+    container_group_name  = f"{maze_title.lower()}-{user_name}-container-group"
+    resource_group_name   = f"{maze_title.lower()}-{user_name}-rg"
+    container_name        = f"{maze_title.lower()}-{user_name}-container"
 
+    region                =  "northeurope"
+    DNS_name              = f"{maze_title.lower()}-{user_name}"
+
+    cpu_cores             =  1
+    memory_gb             =  1.5
     # Convert environment variables dictionary to a list of EnvironmentVariable objects
     env_vars = [EnvironmentVariable(name=k, value=v) for k, v in environment_variables.items()]
+    # Convert ports  list to a list of ContainerPort objects    
+    ports = [ContainerPort(port=p) for p in open_ports]
+
+
+
+    # Create resource group
+    resource_client = ResourceManagementClient(credential, SUBSCRIPTION_ID)
+
+    # Check if resource group already exists
+    if resource_client.resource_groups.check_existence(resource_group_name):
+        return jsonify({'message': 'Container already exists'}), 400 
+    else:
+    
+    # Create resource group
+        resource_group = ResourceGroup(location="Italy North")
+        resource_client.resource_groups.create_or_update(resource_group_name, resource_group)
+
+
 
     # Create container resource requirements
     resource_requirements = ResourceRequirements(
@@ -49,27 +88,77 @@ def start_container():
 
     # Create container instance
     container = Container(
-        name=CONTAINER_NAME,
-        image=IMAGE,
-        resources=resource_requirements,
-        environment_variables=env_vars
+        name                  = container_name,
+        image                 = container_image,
+        resources             = resource_requirements,
+        ports                 = ports,
+        environment_variables = env_vars
+
     )
+
 
     # Create container group
+
+    group_ip_address = IpAddress(
+        ports         = ports,
+        dns_name_label= DNS_name,
+        type          ="Public"
+        )
+
     container_group = ContainerGroup(
-        location='your_azure_region',
+        location=region,
         containers=[container],
         os_type=OperatingSystemTypes.linux,
-        ip_address=IpAddress(
-            ports=[Port(protocol=ContainerGroupNetworkProtocol.tcp, port=80)],
-            type='Public'
-        )
+        ip_address=group_ip_address
     )
 
-    # Start container group
-    client.container_groups.begin_create_or_update(RESOURCE_GROUP, CONTAINER_GROUP_NAME, container_group)
 
-    return jsonify({'message': 'Container started successfully'}), 200
+    
+        
+    try:
+    # Start container group
+        client.container_groups.begin_create_or_update(resource_group_name, container_group_name, container_group)
+
+
+
+        return jsonify(
+            {
+                'message': 'Container started successfully',
+                'DNS': f"{DNS_name}.{region}.azurecontainer.io",
+                'resource_group_name': f"{resource_group_name}"
+            }), 200
+
+    except Exception as e:
+        return jsonify({'message': 'resource group could not be created'}), 500
+
+
+@app.route('/status', methods=['GET'])
+def get_status():
+        return jsonify(
+        {
+            'status': 'UP'
+        }), 200
+
+
+@app.route('/stop-container', methods=['POST'])
+def stop_container():
+    data                  = request.get_json()
+    resource_group_name   = data.get('resource_group_name')
+
+    resource_client = ResourceManagementClient(credential, SUBSCRIPTION_ID)
+    # Delete resource group
+    try:
+        resource_client.resource_groups.begin_delete(resource_group_name)
+        return jsonify(
+        {
+            'message': 'resource_group  has been deleted successfully',
+
+        }), 200
+    except Exception as e:
+        return jsonify({'message': 'resource group could not be found'}), 404
+
+
+
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True,port=8080)

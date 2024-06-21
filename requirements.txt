@@ -1,3 +1,7 @@
 Flask==3.0.3
 azure-identity==1.16.1
+azure-common>=1.1.28
+msrestazure
+azure-mgmt-resource
 azure-mgmt-containerinstance==10.0.0
+python-dotenv
