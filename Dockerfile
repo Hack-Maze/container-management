@@ -1,6 +1,6 @@
 
 # Stage 1: Build stage
-FROM python:3.12 as builder
+FROM python:3.12-slim as builder
 
 WORKDIR /app
 
