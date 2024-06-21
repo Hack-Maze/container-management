@@ -56,7 +56,7 @@ def start_container():
     if not maze_title or not user_name or not container_image:
         return jsonify({'message': 'Bad Request: Missing required data'}), 400
 
-    region                =  "northeurope"
+    region                =  "italynorth"
     DNS_name              = f"{maze_title.lower()}-{user_name}"
 
     cpu_cores             =  1
@@ -121,7 +121,8 @@ def start_container():
         
     try:
     # Start container group
-        client.container_groups.begin_create_or_update(resource_group_name, container_group_name, container_group)
+        create_process = client.container_groups.begin_create_or_update(resource_group_name, container_group_name, container_group)
+        create_process.wait()
 
 
 
@@ -155,7 +156,8 @@ def stop_container():
     resource_client = ResourceManagementClient(credential, SUBSCRIPTION_ID)
     # Delete resource group
     try:
-        resource_client.resource_groups.begin_delete(resource_group_name)
+        delete_procces = resource_client.resource_groups.begin_delete(resource_group_name)
+        delete_procces.wait()
         return jsonify(
         {
             'message': 'Resource group has been deleted successfully',
