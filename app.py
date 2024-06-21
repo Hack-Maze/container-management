@@ -193,8 +193,7 @@ def stop_container():
     return __delete_resource_group(resource_group_name)
 
 
-
-@app.route('/stop-all-containers', methods=['POST'])
+@app.route('/stop-all-containers', methods=['POST', 'GET'])
 def stop_containers():
     # get all container groups
     container_groups = client.container_groups.list()
