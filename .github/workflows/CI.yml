@@ -295,7 +295,7 @@ jobs:
       run:
         shell: bash
 
-    # needs: [Trivy-scan,analyze-codeQL,analyze-codacy,lint]
+    needs:  [build-test]
     steps:
       - name: short-sha
         uses: benjlevesque/short-sha@v2.2
