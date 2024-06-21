@@ -5,3 +5,4 @@ msrestazure
 azure-mgmt-resource
 azure-mgmt-containerinstance==10.0.0
 python-dotenv
+docker

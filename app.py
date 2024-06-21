@@ -10,13 +10,14 @@ from azure.mgmt.containerinstance.models import (
     ContainerGroup,
     Container,
     ContainerPort,
+    Port,
     EnvironmentVariable,
     IpAddress,
     OperatingSystemTypes,
     ResourceRequests,
     ResourceRequirements
 )
-import docker
+from docker import from_env
 
 
 app = Flask(__name__)
@@ -35,7 +36,6 @@ CLIENT_SECRET   = os.getenv('AZURE_CLIENT_SECRET')
 try:
     credential = ClientSecretCredential(tenant_id=TENANT_ID, client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
 except Exception as e:
-    # Handle the exception here, you can print an error message or raise a custom exception
     raise Exception('Failed to authenticate with Azure. Please check your credentials and try again.')
 
 
@@ -43,6 +43,7 @@ except Exception as e:
 # Initialize the client
 client = ContainerInstanceManagementClient(credential, SUBSCRIPTION_ID)
 
+resource_client = ResourceManagementClient(credential, SUBSCRIPTION_ID)
 
 
 
@@ -51,13 +52,13 @@ client = ContainerInstanceManagementClient(credential, SUBSCRIPTION_ID)
 
 def check_if_image_exists(image_name):
     try:
-        client = docker.from_env()
+        client = from_env()
         client.images.pull(image_name)
         return True
     except Exception as e:
         return False
 
-
+# add required parameters to the request
 @app.route('/start-container', methods=['POST'])
 def start_container():
     # Get input data from the request
@@ -67,10 +68,7 @@ def start_container():
     container_image       = data.get('container_image')
     environment_variables = data.get('environment_variables', {})
     open_ports            = data.get('open_ports', [])
-    container_group_name  = f"{maze_title.lower()}-{user_name}-container-group"
-    resource_group_name   = f"{maze_title.lower()}-{user_name}-rg"
-    container_name        = f"{maze_title.lower()}-{user_name}-container"
-    # Check if the container image exists
+
 
     if  not check_if_image_exists(container_image):
         return jsonify({'message': 'Container image does not exist'}), 400
@@ -79,19 +77,21 @@ def start_container():
     if not maze_title or not user_name or not container_image  or open_ports == [] or environment_variables == {}:
         return jsonify({'message': 'Bad Request: Missing required data'}), 400
 
-    region                =  "italynorth"
+    container_group_name  = f"{maze_title.lower()}-{user_name}-container-group"
+    resource_group_name   = f"{maze_title.lower()}-{user_name}-rg"
+    container_name        = f"{maze_title.lower()}-{user_name}-container"
+
+    # Check if the container image exists
+    REGION                =  "italynorth"
     DNS_name              = f"{maze_title.lower()}-{user_name}"
-    cpu_cores             =  1
-    memory_gb             =  1.5
+    CPU_CORES             =  1
+    MEMORY             =  1.5
     # Convert environment variables dictionary to a list of EnvironmentVariable objects
     env_vars = [EnvironmentVariable(name=k, value=v) for k, v in environment_variables.items()]
     # Convert ports  list to a list of ContainerPort objects    
     ports = [ContainerPort(port=p) for p in open_ports]
 
 
-
-    # Create resource group
-    resource_client = ResourceManagementClient(credential, SUBSCRIPTION_ID)
 
     # Check if resource group already exists
     if resource_client.resource_groups.check_existence(resource_group_name):
@@ -107,8 +107,8 @@ def start_container():
     # Create container resource requirements
     resource_requirements = ResourceRequirements(
         requests=ResourceRequests(
-            cpu=cpu_cores,
-            memory_in_gb=memory_gb
+            cpu=CPU_CORES,
+            memory_in_gb=MEMORY
         )
     )
 
@@ -117,7 +117,7 @@ def start_container():
         name                  = container_name,
         image                 = container_image,
         resources             = resource_requirements,
-        ports                 = ports,
+        ports                 = [ContainerPort(port=p) for p in open_ports],
         environment_variables = env_vars
 
     )
@@ -126,13 +126,13 @@ def start_container():
     # Create container group
 
     group_ip_address = IpAddress(
-        ports         = ports,
+        ports         = [Port(port=p) for p in open_ports],
         dns_name_label= DNS_name,
         type          ="Public"
         )
 
     container_group = ContainerGroup(
-        location=region,
+        location=REGION,
         containers=[container],
         os_type=OperatingSystemTypes.linux,
         ip_address=group_ip_address
@@ -151,7 +151,7 @@ def start_container():
         return jsonify(
             {
                 'message': 'Container started successfully',
-                'DNS': f"{DNS_name}.{region}.azurecontainer.io",
+                'DNS': f"{DNS_name}.{REGION}.azurecontainer.io",
                 'resource_group_name': f"{resource_group_name}"
             }), 200
 
@@ -169,6 +169,19 @@ def get_status():
             'status': 'UP'
         }), 200
 
+
+def __delete_resource_group(resource_group_name: str):
+    try:
+        delete_procces = resource_client.resource_groups.begin_delete(resource_group_name)
+        delete_procces.wait()
+        return jsonify(
+            {
+                'message': 'Resource group has been deleted successfully',
+            }), 200
+    except Exception as e:
+        return jsonify({'message': 'Resource group could not be found'}), 400
+
+
 @app.route('/stop-container', methods=['POST'])
 def stop_container():
     data                  = request.get_json()
@@ -177,20 +190,22 @@ def stop_container():
     # Check if resource group name is provided
     if not resource_group_name:
         return jsonify({'message': 'Bad Request: Missing resource group name'}), 400
-
-    resource_client = ResourceManagementClient(credential, SUBSCRIPTION_ID)
-    # Delete resource group
-    try:
-        delete_procces = resource_client.resource_groups.begin_delete(resource_group_name)
-        delete_procces.wait()
-        return jsonify(
-        {
-            'message': 'Resource group has been deleted successfully',
-        }), 200
-    except Exception as e:
-        return jsonify({'message': 'Resource group could not be found'}), 400
+    return __delete_resource_group(resource_group_name)
 
 
+
+@app.route('/stop-all-containers', methods=['POST'])
+def stop_containers():
+    # get all container groups
+    container_groups = client.container_groups.list()
+
+    for container_group in container_groups:
+        prefix = container_group.name.split('-')[:-2]
+        prefix.append('rg')
+        resource_group_name = "-".join(prefix)
+        __delete_resource_group(resource_group_name)
+    else:
+        return jsonify({'message': 'All running containers have been stopped'}), 200
 
 
 if __name__ == '__main__':
