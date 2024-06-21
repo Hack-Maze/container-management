@@ -30,7 +30,11 @@ CLIENT_SECRET   = os.getenv('AZURE_CLIENT_SECRET')
 
 # Manually create the credential object using the environment variables
 
-credential = ClientSecretCredential(tenant_id=TENANT_ID,client_id=CLIENT_ID,client_secret=CLIENT_SECRET)
+try:
+    credential = ClientSecretCredential(tenant_id=TENANT_ID, client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
+except Exception as e:
+    # Handle the exception here, you can print an error message or raise a custom exception
+    raise Exception('Failed to authenticate with Azure. Please check your credentials and try again.')
 
 
 
@@ -169,4 +173,4 @@ def stop_container():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=80)
+    app.run(debug=True, host='0.0.0.0', port=8080)
