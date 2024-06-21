@@ -16,6 +16,8 @@ from azure.mgmt.containerinstance.models import (
     ResourceRequests,
     ResourceRequirements
 )
+import docker
+
 
 app = Flask(__name__)
 
@@ -38,10 +40,23 @@ except Exception as e:
 
 
 
-
-
 # Initialize the client
 client = ContainerInstanceManagementClient(credential, SUBSCRIPTION_ID)
+
+
+
+
+
+
+
+def check_if_image_exists(image_name):
+    try:
+        client = docker.from_env()
+        client.images.pull(image_name)
+        return True
+    except Exception as e:
+        return False
+
 
 @app.route('/start-container', methods=['POST'])
 def start_container():
@@ -55,14 +70,17 @@ def start_container():
     container_group_name  = f"{maze_title.lower()}-{user_name}-container-group"
     resource_group_name   = f"{maze_title.lower()}-{user_name}-rg"
     container_name        = f"{maze_title.lower()}-{user_name}-container"
+    # Check if the container image exists
 
+    if  not check_if_image_exists(container_image):
+        return jsonify({'message': 'Container image does not exist'}), 400
+    
     # Check if all required data is provided
-    if not maze_title or not user_name or not container_image:
+    if not maze_title or not user_name or not container_image  or open_ports == [] or environment_variables == {}:
         return jsonify({'message': 'Bad Request: Missing required data'}), 400
 
     region                =  "italynorth"
     DNS_name              = f"{maze_title.lower()}-{user_name}"
-
     cpu_cores             =  1
     memory_gb             =  1.5
     # Convert environment variables dictionary to a list of EnvironmentVariable objects
@@ -138,6 +156,9 @@ def start_container():
             }), 200
 
     except Exception as e:
+        # Delete resource group
+        delete_process = resource_client.resource_groups.begin_delete(resource_group_name)
+        delete_process.wait()        
         return jsonify({'message': 'resource group could not be created'}), 500
 
 
