@@ -1,6 +1,6 @@
 
 # Stage 1: Build stage
-FROM python:3.9 as builder
+FROM python:3.12 as builder
 
 WORKDIR /app
 
@@ -22,12 +22,12 @@ FROM builder
 WORKDIR /app
 
 # Copy the installed dependencies from the previous stage
-COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 
 # Copy the application source code from the previous stage
 COPY --from=builder /app/* .
 
-# Expose port 5000
+# Expose port 80
 EXPOSE 80
 
 CMD ["python","app.py"]
