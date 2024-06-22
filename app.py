@@ -204,10 +204,10 @@ def stop_containers():
         prefix.append('rg')
         resource_group_name = "-".join(prefix)
         __delete_resource_group(resource_group_name)
-        stopped_containers.append(container_group.name)
+        stopped_containers.append(resource_group_name)
     else:
         if stopped_containers:
-            return jsonify({'message': f'Stopped containers: {stopped_containers}'}), 200
+            return jsonify({'message': f'Stopped all the containers', 'resource_groups': stopped_containers}), 200
         else:
             return jsonify({'message': 'No running containers found'}), 404
 
