@@ -195,6 +195,7 @@ def stop_container():
 
 @app.route('/stop-all-containers', methods=['POST', 'GET'])
 def stop_containers():
+    stopped_containers = []
     # get all container groups
     container_groups = client.container_groups.list()
 
@@ -203,8 +204,13 @@ def stop_containers():
         prefix.append('rg')
         resource_group_name = "-".join(prefix)
         __delete_resource_group(resource_group_name)
+        stopped_containers.append(container_group.name)
     else:
-        return jsonify({'message': 'All running containers have been stopped'}), 200
+        if stopped_containers:
+            return jsonify({'message': f'Stopped containers: {stopped_containers}'}), 200
+        else:
+            return jsonify({'message': 'No running containers found'}), 404
+
 
 
 if __name__ == '__main__':
