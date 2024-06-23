@@ -47,9 +47,6 @@ resource_client = ResourceManagementClient(credential, SUBSCRIPTION_ID)
 
 
 
-
-
-
 def check_if_image_exists(image_name):
     try:
         client = from_env()
@@ -69,8 +66,9 @@ def start_container():
     environment_variables = data.get('environment_variables', {})
     open_ports            = data.get('open_ports', [])
 
-
-    if  not check_if_image_exists(container_image):
+    if   check_if_image_exists(container_image):
+        pass
+    else:
         return jsonify({'message': 'Container image does not exist'}), 400
     
     # Check if all required data is provided
@@ -214,4 +212,4 @@ def stop_containers():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=80)
+    app.run(debug=True, host='0.0.0.0', port=8080)
