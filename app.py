@@ -51,10 +51,10 @@ def check_if_image_exists(image_name):
     try:
         client = from_env()
         client.images.pull(image_name)
-        return True
+        return "ok"
     except Exception as e:
         print(e)
-        return False
+        return e
 
 # add required parameters to the request
 @app.route('/start-container', methods=['POST'])
@@ -67,6 +67,8 @@ def start_container():
     environment_variables = data.get('environment_variables', {})
     open_ports            = data.get('open_ports', [])
 
+
+    print(check_if_image_exists(container_image))
     if   check_if_image_exists(container_image):
         pass
     else:
