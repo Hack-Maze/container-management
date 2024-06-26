@@ -17,7 +17,7 @@ COPY . .
 RUN rm requirements.txt
 
 # Stage 2: Production stage
-FROM builder
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -29,5 +29,5 @@ COPY --from=builder /app/* .
 
 # Expose port 80
 EXPOSE 80
-
+ 
 CMD ["python","app.py"]
