@@ -47,14 +47,14 @@ resource_client = ResourceManagementClient(credential, SUBSCRIPTION_ID)
 
 
 
-def check_if_image_exists(image_name):
-    try:
-        client = from_env()
-        client.images.pull(image_name)
-        return "ok"
-    except Exception as e:
-        print(e)
-        return e
+# def check_if_image_exists(image_name):
+#     try:
+#         client = from_env()
+#         client.images.pull(image_name)
+#         return "ok"
+#     except Exception as e:
+#         print(e)
+#         return e
 
 # add required parameters to the request
 @app.route('/start-container', methods=['POST'])
@@ -68,11 +68,11 @@ def start_container():
     open_ports            = data.get('open_ports', [])
 
 
-    print(check_if_image_exists(container_image))
-    if   check_if_image_exists(container_image):
-        pass
-    else:
-        return jsonify({'message': 'Container image does not exist'}), 400
+    # print(check_if_image_exists(container_image))
+    # if   check_if_image_exists(container_image):
+    #     pass
+    # else:
+    #     return jsonify({'message': 'Container image does not exist'}), 400
     
     # Check if all required data is provided
     if not maze_title or not user_name or not container_image  or open_ports == [] or environment_variables == {}:
