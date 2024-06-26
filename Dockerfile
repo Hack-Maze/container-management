@@ -1,6 +1,6 @@
 
 # Stage 1: Build stage
-FROM python:3.12-slim as builder
+FROM python:3.9-slim as builder
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ COPY . .
 RUN rm requirements.txt
 
 # Stage 2: Production stage
-FROM python:3.12-slim
+FROM python:3.9-slim
 
 WORKDIR /app
 
