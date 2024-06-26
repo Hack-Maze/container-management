@@ -53,6 +53,7 @@ def check_if_image_exists(image_name):
         client.images.pull(image_name)
         return True
     except Exception as e:
+        print(e)
         return False
 
 # add required parameters to the request
