@@ -1,6 +1,6 @@
 
 # Stage 1: Build stage
-FROM python:3.9-slim as builder
+FROM python:3.12-slim as builder
 
 WORKDIR /app
 
@@ -13,11 +13,11 @@ RUN pip install --upgrade setuptools wheel
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 # Copy the application source code
-COPY . .
 RUN rm requirements.txt
+COPY app.py app.py
 
 # Stage 2: Production stage
-FROM python:3.9-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
