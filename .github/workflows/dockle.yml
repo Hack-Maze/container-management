@@ -1,0 +1,21 @@
+name: dockle
+on:
+  push:
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Build an image from Dockerfile
+        run: |
+          docker build -t built-image:scan .
+      - name: Run dockle
+        uses: goodwithtech/dockle-action@main
+        with:
+          image: 'built-image:scan'
+          format: 'list'
+          exit-code: '1'
+          exit-level: 'warn'
+          ignore: 'CIS-DI-0001,DKL-DI-0006'
